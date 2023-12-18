@@ -29,6 +29,9 @@ public class TransformerProperties {
     @Value("${transformer.producer.bulk.stock.index.v1.topic}")
     private String transformerProducerBulkStockIndexV1Topic;
 
+    @Value("${transformer.producer.bulk.service.index.v2.topic}")
+    private String transformerProducerBulkServiceIndexV2Topic;
+
     @Value("${egov.project.host}")
     private String projectHost;
 
@@ -73,6 +76,12 @@ public class TransformerProperties {
 
     @Value("${boundary.label.name.administrativeProvince}")
     private String administrativeProvince;
+
+    @Value("${service.attribute.code}")
+    private String attributesToCheck;
+
+    @Value("${service.checklist.name}")
+    private String checkListName;
 
 
 }
