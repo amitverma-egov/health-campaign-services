@@ -231,7 +231,9 @@ public class ProjectService {
                                            String moduleName, String filter) {
         MasterDetail masterDetail = new MasterDetail();
         masterDetail.setName(masterName);
-        masterDetail.setFilter(filter);
+        if(filter!=null && !filter.isEmpty()) {
+            masterDetail.setFilter(filter);
+        }
         List<MasterDetail> masterDetailList = new ArrayList<>();
         masterDetailList.add(masterDetail);
         ModuleDetail moduleDetail = new ModuleDetail();

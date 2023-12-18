@@ -83,11 +83,11 @@ public abstract class ProjectTaskTransformationService implements Transformation
             log.info("boundary labels {}", boundaryLabelToNameMap.toString());
             Map<String, String> finalBoundaryLabelToNameMap = boundaryLabelToNameMap;
             return task.getResources().stream().map(r ->
-                    transformTaskToProjectTask(r,task,finalBoundaryLabelToNameMap,boundaryLevelVsLabel)
+                    transformTaskToProjectTaskIndex(r,task,finalBoundaryLabelToNameMap,boundaryLevelVsLabel)
             ).collect(Collectors.toList());
         }
 
-        private ProjectTaskIndexV1 transformTaskToProjectTask(TaskResource taskResource,Task task,Map<String, String> finalBoundaryLabelToNameMap,List<JsonNode> boundaryLevelVsLabel){
+        private ProjectTaskIndexV1 transformTaskToProjectTaskIndex(TaskResource taskResource,Task task,Map<String, String> finalBoundaryLabelToNameMap,List<JsonNode> boundaryLevelVsLabel){
           ProjectTaskIndexV1 projectTaskIndexV1 =  ProjectTaskIndexV1.builder()
                     .id(taskResource.getId())
                     .taskId(task.getId())
