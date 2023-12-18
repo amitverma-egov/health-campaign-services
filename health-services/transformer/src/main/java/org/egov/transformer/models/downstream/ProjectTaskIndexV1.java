@@ -2,6 +2,7 @@ package org.egov.transformer.models.downstream;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,10 @@ public class ProjectTaskIndexV1 {
     private String taskType;
     @JsonProperty("projectId")
     private String projectId;
+    @JsonProperty("tenantId")
+    private String tenantId;
+    @JsonProperty("projectType")
+    private String projectType;
     @JsonProperty("startDate")
     private Long startDate;
     @JsonProperty("endDate")
@@ -35,16 +40,8 @@ public class ProjectTaskIndexV1 {
     private boolean isDelivered;
     @JsonProperty("deliveryComments")
     private String deliveryComments;
-    @JsonProperty("province")
-    private String province;
-    @JsonProperty("district")
-    private String district;
-    @JsonProperty("administrativeProvince")
-    private String administrativeProvince;
-    @JsonProperty("locality")
-    private String locality;
-    @JsonProperty("village")
-    private String village;
+    @JsonProperty("boundaryHierarchy")
+    private ObjectNode boundaryHierarchy;
     @JsonProperty("latitude")
     private Double latitude;
     @JsonProperty("longitude")

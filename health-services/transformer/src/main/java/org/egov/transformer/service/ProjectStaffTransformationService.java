@@ -1,5 +1,6 @@
 package org.egov.transformer.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.models.project.ProjectStaff;
 import org.egov.transformer.config.TransformerProperties;
@@ -10,11 +11,9 @@ import org.egov.transformer.service.transformer.Transformer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Slf4j
 public abstract class ProjectStaffTransformationService implements TransformationService<ProjectStaff> {
@@ -66,23 +65,33 @@ public abstract class ProjectStaffTransformationService implements Transformatio
 
         @Override
         public List<ProjectStaffIndexV1> transform(ProjectStaff projectStaff) {
+            String tenantId = projectStaff.getTenantId();
+            JsonNode mdmsBoundaryData = projectService.fetchBoundaryData(tenantId,"");
+            List<JsonNode> boundaryLevelVsLabel = StreamSupport
+                    .stream(mdmsBoundaryData.get("boundaryHierarchy").spliterator(), false).collect(Collectors.toList());
             Map<String, String> boundaryLabelToNameMap = projectService
                     .getBoundaryLabelToNameMapByProjectId(projectStaff.getProjectId(), projectStaff.getTenantId());
             log.info("boundary labels {}", boundaryLabelToNameMap.toString());
-            return Collections.singletonList(ProjectStaffIndexV1.builder()
+            List<ProjectStaffIndexV1> projectStaffIndexV1List = new ArrayList<>();
+            ProjectStaffIndexV1 projectStaffIndexV1 = ProjectStaffIndexV1.builder()
                     .id(projectStaff.getId())
                     .projectId(projectStaff.getProjectId())
                     .userId(projectStaff.getUserId())
-                    .province(boundaryLabelToNameMap.get(properties.getProvince()))
-                    .district(boundaryLabelToNameMap.get(properties.getDistrict()))
-                    .administrativeProvince(boundaryLabelToNameMap.get(properties.getAdministrativeProvince()))
-                    .locality(boundaryLabelToNameMap.get(properties.getLocality()))
-                    .village(boundaryLabelToNameMap.get(properties.getVillage()))
+                    .tenantId(tenantId)
+//                    .projectType("")
                     .createdTime(projectStaff.getAuditDetails().getCreatedTime())
                     .createdBy(projectStaff.getAuditDetails().getCreatedBy())
                     .lastModifiedBy(projectStaff.getAuditDetails().getLastModifiedBy())
                     .lastModifiedTime(projectStaff.getAuditDetails().getLastModifiedTime())
-                    .build());
+                    .build();
+            //todo verify this
+            boundaryLevelVsLabel.forEach(node->{
+                if(node.get("level").asInt()>1){
+                    projectStaffIndexV1.getBoundaryHierarchy().put(node.get("indexLabel").asText(),boundaryLabelToNameMap.get(node.get("indexLabel").asText()));
+                }
+            });
+            projectStaffIndexV1List.add(projectStaffIndexV1);
+            return projectStaffIndexV1List;
         }
     }
 }

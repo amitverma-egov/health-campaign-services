@@ -1,7 +1,9 @@
 package org.egov.transformer.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.models.project.Task;
+import org.egov.common.models.project.TaskResource;
 import org.egov.transformer.config.TransformerProperties;
 import org.egov.transformer.enums.Operation;
 import org.egov.transformer.models.downstream.ProjectTaskIndexV1;
@@ -14,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Slf4j
 public abstract class ProjectTaskTransformationService implements TransformationService<Task> {
@@ -73,36 +76,47 @@ public abstract class ProjectTaskTransformationService implements Transformation
                 boundaryLabelToNameMap = projectService
                         .getBoundaryLabelToNameMapByProjectId(task.getProjectId(), task.getTenantId());
             }
+            String tenantId = task.getTenantId();
+            JsonNode mdmsBoundaryData = projectService.fetchBoundaryData(tenantId,"");
+            List<JsonNode> boundaryLevelVsLabel = StreamSupport
+                    .stream(mdmsBoundaryData.get("boundaryHierarchy").spliterator(), false).collect(Collectors.toList());
             log.info("boundary labels {}", boundaryLabelToNameMap.toString());
             Map<String, String> finalBoundaryLabelToNameMap = boundaryLabelToNameMap;
             return task.getResources().stream().map(r ->
-                    ProjectTaskIndexV1.builder()
-                            .id(r.getId())
-                            .taskId(task.getId())
-                            .taskType("DELIVERY")
-                            .projectId(task.getProjectId())
-                            .startDate(task.getActualStartDate())
-                            .endDate(task.getActualEndDate())
-                            .productVariant(r.getProductVariantId())
-                            .isDelivered(r.getIsDelivered())
-                            .quantity(r.getQuantity())
-                            .deliveredTo("HOUSEHOLD")
-                            .deliveryComments(r.getDeliveryComment())
-                            .province(finalBoundaryLabelToNameMap != null ? finalBoundaryLabelToNameMap.get(properties.getProvince()) : null)
-                            .district(finalBoundaryLabelToNameMap != null ? finalBoundaryLabelToNameMap.get(properties.getDistrict()) : null)
-                            .administrativeProvince(finalBoundaryLabelToNameMap != null ?
-                                    finalBoundaryLabelToNameMap.get(properties.getAdministrativeProvince()) : null)
-                            .locality(finalBoundaryLabelToNameMap != null ? finalBoundaryLabelToNameMap.get(properties.getLocality()) : null)
-                            .village(finalBoundaryLabelToNameMap != null ? finalBoundaryLabelToNameMap.get(properties.getVillage()) : null)
-                            .latitude(task.getAddress().getLatitude())
-                            .longitude(task.getAddress().getLongitude())
-                            .createdTime(task.getAuditDetails().getCreatedTime())
-                            .createdBy(task.getAuditDetails().getCreatedBy())
-                            .lastModifiedTime(task.getAuditDetails().getLastModifiedTime())
-                            .lastModifiedBy(task.getAuditDetails().getLastModifiedBy())
-                            .isDeleted(task.getIsDeleted())
-                            .build()
+                    transformTaskToProjectTask(r,task,finalBoundaryLabelToNameMap,boundaryLevelVsLabel)
             ).collect(Collectors.toList());
+        }
+
+        private ProjectTaskIndexV1 transformTaskToProjectTask(TaskResource taskResource,Task task,Map<String, String> finalBoundaryLabelToNameMap,List<JsonNode> boundaryLevelVsLabel){
+          ProjectTaskIndexV1 projectTaskIndexV1 =  ProjectTaskIndexV1.builder()
+                    .id(taskResource.getId())
+                    .taskId(task.getId())
+                    .taskType("DELIVERY")
+                    .projectId(task.getProjectId())
+//                    .projectType("")
+                    .tenantId(task.getTenantId())
+                    .startDate(task.getActualStartDate())
+                    .endDate(task.getActualEndDate())
+                    .productVariant(taskResource.getProductVariantId())
+                    .isDelivered(taskResource.getIsDelivered())
+                    .quantity(taskResource.getQuantity())
+                    .deliveredTo("HOUSEHOLD")
+                    .deliveryComments(taskResource.getDeliveryComment())
+                    .latitude(task.getAddress().getLatitude())
+                    .longitude(task.getAddress().getLongitude())
+                    .createdTime(task.getAuditDetails().getCreatedTime())
+                    .createdBy(task.getAuditDetails().getCreatedBy())
+                    .lastModifiedTime(task.getAuditDetails().getLastModifiedTime())
+                    .lastModifiedBy(task.getAuditDetails().getLastModifiedBy())
+                    .isDeleted(task.getIsDeleted())
+                    .build();
+            //todo verify this
+            boundaryLevelVsLabel.forEach(node->{
+                if(node.get("level").asInt()>1){
+                    projectTaskIndexV1.getBoundaryHierarchy().put(node.get("indexLabel").asText(),finalBoundaryLabelToNameMap.get(node.get("indexLabel").asText())==null? null: finalBoundaryLabelToNameMap.get(node.get("indexLabel").asText()));
+                }
+            });
+            return projectTaskIndexV1;
         }
     }
 }

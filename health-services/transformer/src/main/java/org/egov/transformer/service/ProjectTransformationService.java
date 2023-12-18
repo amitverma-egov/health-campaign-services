@@ -1,5 +1,6 @@
 package org.egov.transformer.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.Target;
@@ -11,11 +12,9 @@ import org.egov.transformer.service.transformer.Transformer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Slf4j
 public abstract class ProjectTransformationService implements TransformationService<Project> {
@@ -73,6 +72,10 @@ public abstract class ProjectTransformationService implements TransformationServ
                     .getBoundaryLabelToNameMap(project.getAddress().getBoundary(), project.getTenantId());
             log.info("boundary labels {}", boundaryLabelToNameMap.toString());
             List<Target> targets = project.getTargets();
+            String tenantId = project.getTenantId();
+            JsonNode mdmsBoundaryData = projectService.fetchBoundaryData(tenantId,"");
+            List<JsonNode> boundaryLevelVsLabel = StreamSupport
+                    .stream(mdmsBoundaryData.get("boundaryHierarchy").spliterator(), false).collect(Collectors.toList());
             if (targets == null || targets.isEmpty()) {
                 return Collections.emptyList();
             }
@@ -97,7 +100,7 @@ public abstract class ProjectTransformationService implements TransformationServ
                             productVariant = String.join(",", productVariants);
                         }
 
-                        return ProjectIndexV1.builder()
+                        ProjectIndexV1 projectIndexV1 =  ProjectIndexV1.builder()
                                 .id(r.getId())
                                 .projectId(project.getId())
                                 .overallTarget(targetNo)
@@ -107,16 +110,21 @@ public abstract class ProjectTransformationService implements TransformationServ
                                 .endDate(project.getEndDate())
                                 .productVariant(productVariant)
                                 .targetType(r.getBeneficiaryType())
-                                .province(boundaryLabelToNameMap.get(properties.getProvince()))
-                                .district(boundaryLabelToNameMap.get(properties.getDistrict()))
-                                .administrativeProvince(boundaryLabelToNameMap.get(properties.getAdministrativeProvince()))
-                                .locality(boundaryLabelToNameMap.get(properties.getLocality()))
-                                .village(boundaryLabelToNameMap.get(properties.getVillage()))
+                                .tenantId(tenantId)
+//                                .projectType("")
+//                                .subProjectType("")
                                 .createdTime(project.getAuditDetails().getCreatedTime())
                                 .createdBy(project.getAuditDetails().getCreatedBy())
                                 .lastModifiedTime(project.getAuditDetails().getLastModifiedTime())
                                 .lastModifiedBy(project.getAuditDetails().getLastModifiedBy())
                                 .build();
+                        //todo verify this
+                        boundaryLevelVsLabel.forEach(node->{
+                            if(node.get("level").asInt()>1){
+                                projectIndexV1.getBoundaryHierarchy().put(node.get("indexLabel").asText(),boundaryLabelToNameMap.get(node.get("indexLabel").asText()));
+                            }
+                        });
+                        return projectIndexV1;
                     }
             ).collect(Collectors.toList());
         }

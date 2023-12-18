@@ -22,6 +22,7 @@ import org.egov.transformer.config.TransformerProperties;
 import org.egov.transformer.http.client.ServiceRequestClient;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -197,12 +198,35 @@ public class ProjectService {
         }
     }
 
+    public JsonNode fetchBoundaryData(String tenantId,String filter) {
+        List<JsonNode> projectTypes = new ArrayList<>();
+        RequestInfo requestInfo = RequestInfo.builder()
+                .userInfo(User.builder().uuid("transformer-uuid").build())
+                .build();
+        try {
+            JsonNode response = fetchMdmsResponse(requestInfo, tenantId, PROJECT_TYPES,
+                    transformerProperties.getMdmsModule(), filter);
+            projectTypes = convertToProjectTypeJsonNodeList(response);
+            //todo configure this id
+            JsonNode requiredProjectType = projectTypes.stream().filter(projectType -> projectType.get("id").asText().equals("dbd45c31-de9e-4e62-a9b6-abb818928fd1")).findFirst().get();
+            return requiredProjectType.get("boundaryData");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
     private List<String> convertToProjectTypeList(JsonNode jsonNode) {
         JsonNode projectTypesNode = jsonNode.get(transformerProperties.getMdmsModule()).withArray(PROJECT_TYPES);
         return new ObjectMapper().convertValue(projectTypesNode, new TypeReference<List<String>>() {
         });
     }
 
+    private List<JsonNode> convertToProjectTypeJsonNodeList(JsonNode jsonNode) throws IOException {
+        JsonNode projectTypesNode = jsonNode.get(transformerProperties.getMdmsModule()).withArray(PROJECT_TYPES);
+        return objectMapper.readValue(projectTypesNode.traverse(), new TypeReference<List<JsonNode>>() {
+        });
+    }
     private MdmsCriteriaReq getMdmsRequest(RequestInfo requestInfo, String tenantId, String masterName,
                                            String moduleName, String filter) {
         MasterDetail masterDetail = new MasterDetail();
