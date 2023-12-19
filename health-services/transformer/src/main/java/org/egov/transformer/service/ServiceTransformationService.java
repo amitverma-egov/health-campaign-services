@@ -33,7 +33,7 @@ public class ServiceTransformationService {
 
     public void transform(List<Service> serviceList) {
         List<ServiceIndexV2> serviceIndexV2List = new ArrayList<>();
-        String topic = transformerProperties.getTransformerProducerBulkServiceIndexV2Topic();
+        String topic = transformerProperties.getTransformerProducerServiceIndexV2Topic();
         serviceList.forEach(service -> {
             transform(service,serviceIndexV2List);
         });
