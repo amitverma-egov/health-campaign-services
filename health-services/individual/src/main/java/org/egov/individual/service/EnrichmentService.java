@@ -18,6 +18,7 @@ import org.egov.individual.config.IndividualProperties;
 import org.egov.individual.util.IndividualIdGenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.ReflectionUtils;
 
 import static org.egov.common.utils.CommonUtils.collectFromList;
@@ -200,8 +201,16 @@ public class EnrichmentService {
                 .collect(Collectors.toList()));
         List<Identifier> identifiers = collectFromList(validIndividuals,
                 Individual::getIdentifiers);
+        enrichClientReferenceIdInIdentifiers(identifiers);
         List<String> identifierIdList = uuidSupplier().apply(identifiers.size());
         enrichForCreate(identifiers, identifierIdList, request.getRequestInfo(), false);
+    }
+
+    // The persister binds clientReferenceId explicitly, so a missing value would bypass the column default
+    private static void enrichClientReferenceIdInIdentifiers(List<Identifier> identifiers) {
+        identifiers.stream()
+                .filter(identifier -> ObjectUtils.isEmpty(identifier.getClientReferenceId()))
+                .forEach(identifier -> identifier.setClientReferenceId(UUID.randomUUID().toString()));
     }
 
     private static Individual enrichIndividualIdInIdentifiers(Individual individual) {
@@ -290,9 +299,15 @@ public class EnrichmentService {
 
             if (!identifiersToCreate.isEmpty()) {
                 log.info("enriching identifiers to create");
+                enrichClientReferenceIdInIdentifiers(identifiersToCreate);
                 List<String> identifierIdList = uuidSupplier().apply(identifiersToCreate.size());
                 enrichForCreate(identifiersToCreate, identifierIdList, request.getRequestInfo(), false);
-                identifiersToCreate.forEach(identifier -> identifier.setIndividualId(individual.getId()));
+                identifiersToCreate.forEach(identifier -> {
+                    identifier.setIndividualId(individual.getId());
+                    if (ObjectUtils.isEmpty(identifier.getIndividualClientReferenceId())) {
+                        identifier.setIndividualClientReferenceId(individual.getClientReferenceId());
+                    }
+                });
             }
 
             if (!identifiersToUpdate.isEmpty()) {
